@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <style>
         :root {
             --primary: #6c5ce7;
@@ -217,21 +218,6 @@
         
         .btn-google:hover {
             box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
-        }
-        
-        .register-link {
-            text-align: center;
-            margin-top: 20px;
-            color: var(--gray);
-        }
-        
-        .register-link a {
-            color: var(--secondary);
-            text-decoration: none;
-        }
-        
-        .register-link a:hover {
-            text-decoration: underline;
         }
         
         .ip-info {
@@ -608,6 +594,12 @@
             max-width: 100%;
             border-radius: 10px;
             margin-top: 5px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .message-image:hover {
+            transform: scale(1.05);
         }
         
         .message-time {
@@ -750,6 +742,33 @@
             color: var(--light);
         }
         
+        .user-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        .user-item {
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .user-item.selected {
+            background: rgba(108, 92, 231, 0.2);
+        }
+        
         .group-members {
             display: flex;
             flex-wrap: wrap;
@@ -798,6 +817,42 @@
             margin-top: 10px;
             font-size: 0.9rem;
             color: var(--gray);
+        }
+        
+        .emoji-picker {
+            position: absolute;
+            bottom: 80px;
+            background: rgba(30, 30, 46, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 5px;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+        
+        .emoji {
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+        
+        .emoji:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: none;
         }
         
         .notification-panel {
@@ -929,12 +984,12 @@
             
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" class="form-control" placeholder="Masukkan email Anda">
+                <input type="email" id="email" class="form-control" placeholder="Masukkan email Anda" onkeypress="handleLoginEnter(event)">
             </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" class="form-control" placeholder="Masukkan password Anda">
+                <input type="password" id="password" class="form-control" placeholder="Masukkan password Anda" onkeypress="handleLoginEnter(event)">
             </div>
             
             <button class="btn btn-primary" id="loginBtn">Login</button>
@@ -942,10 +997,6 @@
             <button class="btn btn-google" id="googleLoginBtn">
                 <i class="fab fa-google"></i> Login dengan Google
             </button>
-            
-            <div class="register-link">
-                Belum punya akun? <a href="#" id="registerLink">Daftar di sini</a>
-            </div>
             
             <div class="ip-info" id="ipInfo">
                 IP Address: Mendeteksi...
@@ -1046,9 +1097,13 @@
                             <i class="fas fa-smile"></i>
                         </button>
                     </div>
+                    <div class="emoji-picker" id="emojiPicker">
+                        <!-- Emoji akan dimuat di sini -->
+                    </div>
+                    <img id="imagePreview" class="image-preview" alt="Preview Gambar">
                     <form class="message-input-form" id="messageForm">
                         <div class="message-input-wrapper">
-                            <textarea class="message-input" id="messageInput" placeholder="Ketik pesan..."></textarea>
+                            <textarea class="message-input" id="messageInput" placeholder="Ketik pesan..." onkeypress="handleMessageEnter(event)"></textarea>
                             <div class="selected-file" id="selectedFile"></div>
                         </div>
                         <button type="submit" class="send-btn">
@@ -1099,11 +1154,14 @@
                 <input type="text" id="groupName" class="form-control" placeholder="Masukkan nama grup">
             </div>
             <div class="form-group">
-                <label for="groupMembers">Anggota Grup</label>
-                <input type="text" id="groupMembers" class="form-control" placeholder="Cari pengguna untuk ditambahkan">
-                <div class="group-members" id="selectedMembers">
-                    <!-- Anggota terpilih akan ditampilkan di sini -->
+                <label for="searchUsers">Cari Pengguna</label>
+                <input type="text" id="searchUsers" class="form-control" placeholder="Cari pengguna berdasarkan email...">
+                <div class="user-list" id="userList">
+                    <!-- Daftar pengguna akan dimuat di sini -->
                 </div>
+            </div>
+            <div class="group-members" id="selectedMembers">
+                <!-- Anggota terpilih akan ditampilkan di sini -->
             </div>
             <button class="btn btn-primary" id="createGroupConfirmBtn">Buat Grup</button>
         </div>
@@ -1131,6 +1189,12 @@
                 <label for="profileStatus">Status</label>
                 <input type="text" id="profileStatus" class="form-control" placeholder="Masukkan status Anda">
             </div>
+            <div class="form-group">
+                <label>Foto Profil</label>
+                <input type="file" id="profilePhotoInput" class="file-input" accept="image/*">
+                <label for="profilePhotoInput" class="file-label">Pilih Foto</label>
+                <div class="selected-file" id="selectedProfilePhoto"></div>
+            </div>
             <button class="btn btn-primary" id="saveProfileBtn">Simpan Perubahan</button>
         </div>
     </div>
@@ -1157,13 +1221,13 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
+        const storage = firebase.storage();
 
         // DOM Elements
         const loginPage = document.getElementById('loginPage');
         const chatPage = document.getElementById('chatPage');
         const loginBtn = document.getElementById('loginBtn');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
-        const registerLink = document.getElementById('registerLink');
         const messageForm = document.getElementById('messageForm');
         const messageInput = document.getElementById('messageInput');
         const messagesContainer = document.getElementById('messagesContainer');
@@ -1185,7 +1249,8 @@
         const closeGroupModal = document.getElementById('closeGroupModal');
         const createGroupConfirmBtn = document.getElementById('createGroupConfirmBtn');
         const groupName = document.getElementById('groupName');
-        const groupMembers = document.getElementById('groupMembers');
+        const searchUsers = document.getElementById('searchUsers');
+        const userList = document.getElementById('userList');
         const selectedMembers = document.getElementById('selectedMembers');
         const searchInput = document.getElementById('searchInput');
         const currentChatName = document.getElementById('currentChatName');
@@ -1199,7 +1264,9 @@
         const attachFileBtn = document.getElementById('attachFileBtn');
         const attachImageBtn = document.getElementById('attachImageBtn');
         const emojiBtn = document.getElementById('emojiBtn');
+        const emojiPicker = document.getElementById('emojiPicker');
         const selectedFile = document.getElementById('selectedFile');
+        const imagePreview = document.getElementById('imagePreview');
         const profileModal = document.getElementById('profileModal');
         const closeProfileModal = document.getElementById('closeProfileModal');
         const profileBtn = document.getElementById('profileBtn');
@@ -1209,6 +1276,8 @@
         const profileUserEmail = document.getElementById('profileUserEmail');
         const profileName = document.getElementById('profileName');
         const profileStatus = document.getElementById('profileStatus');
+        const profilePhotoInput = document.getElementById('profilePhotoInput');
+        const selectedProfilePhoto = document.getElementById('selectedProfilePhoto');
         const saveProfileBtn = document.getElementById('saveProfileBtn');
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const notificationSound = document.getElementById('notificationSound');
@@ -1221,6 +1290,11 @@
         let allUsers = {};
         let selectedUsers = [];
         let isDarkMode = true;
+        let imageToUpload = null;
+        let profileImageToUpload = null;
+
+        // Emoji list
+        const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
 
         // Create stars for background
         function createStars() {
@@ -1248,6 +1322,21 @@
             }
         }
 
+        // Handle Enter key in login form
+        function handleLoginEnter(event) {
+            if (event.key === 'Enter') {
+                loginWithEmail();
+            }
+        }
+
+        // Handle Enter key in message input
+        function handleMessageEnter(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
         // Authentication functions
         function loginWithEmail() {
             const email = document.getElementById('email').value;
@@ -1264,36 +1353,12 @@
                     showChatPage();
                 })
                 .catch((error) => {
-                    alert('Login gagal: ' + error.message);
+                    // If login fails, try to create account
+                    registerWithEmail(email, password);
                 });
         }
 
-        function loginWithGoogle() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then((result) => {
-                    currentUser = result.user;
-                    showChatPage();
-                })
-                .catch((error) => {
-                    alert('Login Google gagal: ' + error.message);
-                });
-        }
-
-        function registerWithEmail() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            if (!email || !password) {
-                alert('Harap masukkan email dan password');
-                return;
-            }
-            
-            if (password.length < 6) {
-                alert('Password harus minimal 6 karakter');
-                return;
-            }
-            
+        function registerWithEmail(email, password) {
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     currentUser = userCredential.user;
@@ -1308,7 +1373,19 @@
                     showNotification('Akun berhasil dibuat!', 'success');
                 })
                 .catch((error) => {
-                    alert('Pendaftaran gagal: ' + error.message);
+                    alert('Login/Pendaftaran gagal: ' + error.message);
+                });
+        }
+
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    currentUser = result.user;
+                    showChatPage();
+                })
+                .catch((error) => {
+                    alert('Login Google gagal: ' + error.message);
                 });
         }
 
@@ -1354,7 +1431,8 @@
                 email: currentUser.email,
                 online: true,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP,
-                status: 'Online'
+                status: 'Online',
+                avatar: currentUser.photoURL || ''
             });
             
             // Handle disconnect
@@ -1367,6 +1445,7 @@
             loadChats();
             loadOnlineUsers();
             loadAllUsers();
+            loadEmojis();
             
             showNotification(`Selamat datang, ${currentUser.displayName || currentUser.email}!`, 'success');
         }
@@ -1596,7 +1675,9 @@
                 }
                 
                 // Scroll to bottom
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                setTimeout(() => {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 100);
             });
         }
 
@@ -1620,8 +1701,8 @@
             messageElement.className = `message ${messageType}`;
             messageElement.innerHTML = `
                 ${messageType === 'received' && message.sender !== 'system' ? `<div class="message-sender">${senderName}</div>` : ''}
-                <div class="message-text">${message.text}</div>
-                ${message.image ? `<img src="${message.image}" class="message-image" alt="Gambar">` : ''}
+                <div class="message-text">${message.text || ''}</div>
+                ${message.image ? `<img src="${message.image}" class="message-image" alt="Gambar" onclick="openImage('${message.image}')">` : ''}
                 <div class="message-time">${formatTime(message.timestamp)}</div>
                 ${isSent ? `<div class="message-status"><i class="fas fa-check"></i></div>` : ''}
             `;
@@ -1629,10 +1710,14 @@
             messagesContainer.appendChild(messageElement);
         }
 
+        function openImage(imageUrl) {
+            window.open(imageUrl, '_blank');
+        }
+
         function sendMessage() {
             const messageText = messageInput.value.trim();
             
-            if (!messageText) return;
+            if (!messageText && !imageToUpload) return;
             
             if (!currentChat) {
                 showNotification('Pilih percakapan terlebih dahulu', 'error');
@@ -1641,22 +1726,46 @@
             
             const messageData = {
                 sender: currentUser.uid,
-                text: messageText,
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
                 type: 'text'
             };
             
+            if (imageToUpload) {
+                // Upload image first
+                uploadImage(imageToUpload)
+                    .then(downloadURL => {
+                        messageData.image = downloadURL;
+                        if (messageText) {
+                            messageData.text = messageText;
+                        }
+                        saveMessageToDatabase(messageData);
+                    })
+                    .catch(error => {
+                        console.error('Error uploading image:', error);
+                        showNotification('Gagal mengunggah gambar', 'error');
+                    });
+            } else {
+                messageData.text = messageText;
+                saveMessageToDatabase(messageData);
+            }
+            
+            // Clear input and reset image
+            messageInput.value = '';
+            imageToUpload = null;
+            imagePreview.style.display = 'none';
+            selectedFile.textContent = '';
+        }
+
+        function saveMessageToDatabase(messageData) {
             // Save message to database
             database.ref('messages/' + currentChat.id).push(messageData)
                 .then(() => {
                     // Update last message in chat
+                    const lastMessage = messageData.text || '(Gambar)';
                     database.ref('chats/' + currentChat.id).update({
-                        lastMessage: messageText,
+                        lastMessage: lastMessage,
                         lastMessageTime: firebase.database.ServerValue.TIMESTAMP
                     });
-                    
-                    // Clear input
-                    messageInput.value = '';
                     
                     // Notify other users in the chat
                     Object.keys(currentChat.members).forEach(memberId => {
@@ -1667,7 +1776,7 @@
                                 chatName: currentChat.name,
                                 sender: currentUser.uid,
                                 senderName: currentUser.displayName || currentUser.email,
-                                message: messageText,
+                                message: lastMessage,
                                 timestamp: firebase.database.ServerValue.TIMESTAMP
                             });
                         }
@@ -1677,6 +1786,24 @@
                     console.error('Error sending message:', error);
                     showNotification('Gagal mengirim pesan', 'error');
                 });
+        }
+
+        function uploadImage(file) {
+            return new Promise((resolve, reject) => {
+                const storageRef = storage.ref();
+                const imageRef = storageRef.child('chat_images/' + Date.now() + '_' + file.name);
+                
+                imageRef.put(file)
+                    .then(snapshot => {
+                        return snapshot.ref.getDownloadURL();
+                    })
+                    .then(downloadURL => {
+                        resolve(downloadURL);
+                    })
+                    .catch(error => {
+                        reject(error);
+                    });
+            });
         }
 
         function formatTime(timestamp) {
@@ -1719,12 +1846,46 @@
             // Load all users for display
             database.ref('users').on('value', (snapshot) => {
                 allUsers = snapshot.val() || {};
+                renderUserList();
+            });
+        }
+
+        function renderUserList() {
+            userList.innerHTML = '';
+            
+            Object.keys(allUsers).forEach(userId => {
+                if (userId !== currentUser.uid) {
+                    const user = allUsers[userId];
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    userItem.innerHTML = `
+                        <div class="avatar" style="width: 30px; height: 30px; font-size: 0.8rem;">
+                            ${user.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div style="font-weight: 500;">${user.name}</div>
+                            <div style="font-size: 0.8rem; color: var(--gray);">${user.email}</div>
+                        </div>
+                    `;
+                    
+                    userItem.addEventListener('click', () => {
+                        addUserToGroup(userId, user.name);
+                        userItem.classList.toggle('selected');
+                    });
+                    
+                    userList.appendChild(userItem);
+                }
             });
         }
 
         function createGroup() {
             if (!groupName.value.trim()) {
                 alert('Harap masukkan nama grup');
+                return;
+            }
+            
+            if (selectedUsers.length === 0) {
+                alert('Harap pilih setidaknya satu anggota grup');
                 return;
             }
             
@@ -1780,24 +1941,6 @@
                 });
         }
 
-        function searchUsers(query) {
-            // In a real app, you would search users in the database
-            // For this demo, we'll just filter from onlineUsers
-            
-            const results = [];
-            const lowerQuery = query.toLowerCase();
-            
-            Object.keys(onlineUsers).forEach(userId => {
-                const user = onlineUsers[userId];
-                if (user.name.toLowerCase().includes(lowerQuery) || 
-                    user.email.toLowerCase().includes(lowerQuery)) {
-                    results.push({ id: userId, ...user });
-                }
-            });
-            
-            return results;
-        }
-
         function addUserToGroup(userId, userName) {
             if (!selectedUsers.includes(userId)) {
                 selectedUsers.push(userId);
@@ -1818,6 +1961,20 @@
                     memberTag.remove();
                 });
             }
+        }
+
+        function loadEmojis() {
+            emojiPicker.innerHTML = '';
+            emojis.forEach(emoji => {
+                const emojiElement = document.createElement('span');
+                emojiElement.className = 'emoji';
+                emojiElement.textContent = emoji;
+                emojiElement.addEventListener('click', () => {
+                    messageInput.value += emoji;
+                    emojiPicker.style.display = 'none';
+                });
+                emojiPicker.appendChild(emojiElement);
+            });
         }
 
         function toggleTheme() {
@@ -1858,49 +2015,109 @@
             const newName = profileName.value.trim();
             const newStatus = profileStatus.value.trim();
             
+            let updatePromise = Promise.resolve();
+            
             if (newName) {
-                currentUser.updateProfile({
+                updatePromise = currentUser.updateProfile({
                     displayName: newName
-                })
+                });
+            }
+            
+            updatePromise
                 .then(() => {
                     // Update in database
-                    database.ref('users/' + currentUser.uid).update({
-                        name: newName,
+                    const updates = {
+                        name: newName || currentUser.displayName,
                         status: newStatus
-                    });
+                    };
                     
+                    if (profileImageToUpload) {
+                        return uploadProfileImage(profileImageToUpload)
+                            .then(avatarUrl => {
+                                updates.avatar = avatarUrl;
+                                return currentUser.updateProfile({
+                                    photoURL: avatarUrl
+                                });
+                            })
+                            .then(() => database.ref('users/' + currentUser.uid).update(updates));
+                    } else {
+                        return database.ref('users/' + currentUser.uid).update(updates);
+                    }
+                })
+                .then(() => {
                     // Update UI
                     updateUserInfo();
                     
                     showNotification('Profil berhasil diperbarui!', 'success');
                     profileModal.style.display = 'none';
+                    profileImageToUpload = null;
+                    selectedProfilePhoto.textContent = '';
                 })
                 .catch(error => {
                     console.error('Error updating profile:', error);
                     showNotification('Gagal memperbarui profil', 'error');
                 });
+        }
+
+        function uploadProfileImage(file) {
+            return new Promise((resolve, reject) => {
+                const storageRef = storage.ref();
+                const imageRef = storageRef.child('profile_images/' + currentUser.uid + '_' + Date.now());
+                
+                imageRef.put(file)
+                    .then(snapshot => {
+                        return snapshot.ref.getDownloadURL();
+                    })
+                    .then(downloadURL => {
+                        resolve(downloadURL);
+                    })
+                    .catch(error => {
+                        reject(error);
+                    });
+            });
+        }
+
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    showNotification('Ukuran gambar terlalu besar. Maksimal 5MB', 'error');
+                    return;
+                }
+                
+                imageToUpload = file;
+                selectedFile.textContent = `Gambar: ${file.name}`;
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleProfileImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    showNotification('Ukuran gambar terlalu besar. Maksimal 5MB', 'error');
+                    return;
+                }
+                
+                profileImageToUpload = file;
+                selectedProfilePhoto.textContent = `Foto: ${file.name}`;
             }
         }
 
         // Event Listeners
         loginBtn.addEventListener('click', loginWithEmail);
         googleLoginBtn.addEventListener('click', loginWithGoogle);
-        registerLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            registerWithEmail();
-        });
 
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             sendMessage();
-        });
-
-        // Handle Enter key for sending message
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
         });
 
         notificationBell.addEventListener('click', () => {
@@ -1918,19 +2135,6 @@
         });
 
         createGroupConfirmBtn.addEventListener('click', createGroup);
-
-        groupMembers.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            if (query.length > 1) {
-                const results = searchUsers(query);
-                // In a real app, you would show these results in a dropdown
-                // For this demo, we'll just add the first result if it exists
-                if (results.length > 0) {
-                    addUserToGroup(results[0].id, results[0].name);
-                    groupMembers.value = '';
-                }
-            }
-        });
 
         userProfile.addEventListener('click', () => {
             userMenu.style.display = userMenu.style.display === 'block' ? 'none' : 'block';
@@ -1959,6 +2163,25 @@
         voiceCallBtn.addEventListener('click', initVoiceCall);
         videoCallBtn.addEventListener('click', initVideoCall);
 
+        attachImageBtn.addEventListener('click', () => {
+            document.getElementById('imageInput').click();
+        });
+
+        emojiBtn.addEventListener('click', () => {
+            emojiPicker.style.display = emojiPicker.style.display === 'flex' ? 'none' : 'flex';
+        });
+
+        // Create hidden file inputs
+        const imageInput = document.createElement('input');
+        imageInput.type = 'file';
+        imageInput.id = 'imageInput';
+        imageInput.className = 'file-input';
+        imageInput.accept = 'image/*';
+        imageInput.addEventListener('change', handleImageSelect);
+        document.body.appendChild(imageInput);
+
+        profilePhotoInput.addEventListener('change', handleProfileImageSelect);
+
         // Auth state observer
         auth.onAuthStateChanged((user) => {
             if (user) {
@@ -1981,7 +2204,7 @@
             }
         });
 
-        // Close modals when clicking outside
+        // Close modals and panels when clicking outside
         window.addEventListener('click', (e) => {
             if (e.target === createGroupModal) {
                 createGroupModal.style.display = 'none';
@@ -1994,6 +2217,9 @@
             }
             if (!notificationBell.contains(e.target) && !notificationPanel.contains(e.target)) {
                 notificationPanel.style.display = 'none';
+            }
+            if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target)) {
+                emojiPicker.style.display = 'none';
             }
         });
     </script>
