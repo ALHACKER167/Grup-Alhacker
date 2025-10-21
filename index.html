@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <style>
         :root {
             --primary: #6c5ce7;
@@ -940,6 +939,10 @@
             
             <button class="btn btn-primary" id="loginBtn">Login</button>
             
+            <button class="btn btn-google" id="googleLoginBtn">
+                <i class="fab fa-google"></i> Login dengan Google
+            </button>
+            
             <div class="register-link">
                 Belum punya akun? <a href="#" id="registerLink">Daftar di sini</a>
             </div>
@@ -973,7 +976,7 @@
                 
                 <div class="user-profile" id="userProfile">
                     <div class="avatar" id="userAvatar">
-                        <img id="userAvatarImg" src="" alt="Avatar">
+                        <span id="userAvatarText">U</span>
                     </div>
                     <span id="userName">User</span>
                 </div>
@@ -1002,8 +1005,8 @@
                 <div class="chat-info" id="chatInfo">
                     <div class="chat-info-left">
                         <div class="chat-item-avatar" id="currentChatAvatar">
-                            <img id="currentChatAvatarImg" src="" alt="Avatar">
-                            <div class="online-dot" id="currentChatOnlineDot"></div>
+                            <span id="currentChatAvatarText">G</span>
+                            <div class="online-dot" id="currentChatOnlineDot" style="display: none;"></div>
                         </div>
                         <div>
                             <div id="currentChatName">Pilih percakapan</div>
@@ -1024,7 +1027,11 @@
                 </div>
                 
                 <div class="messages-container" id="messagesContainer">
-                    <!-- Pesan akan dimuat di sini -->
+                    <div class="message received">
+                        <div class="message-sender">System</div>
+                        <div class="message-text">Selamat datang di GRUP ALHACKER! Pilih percakapan untuk memulai chat.</div>
+                        <div class="message-time">Sekarang</div>
+                    </div>
                 </div>
                 
                 <div class="message-input-container">
@@ -1111,7 +1118,7 @@
             </div>
             <div style="text-align: center; margin-bottom: 20px;">
                 <div class="avatar" style="width: 80px; height: 80px; margin: 0 auto 15px;">
-                    <img id="profileAvatarImg" src="" alt="Avatar">
+                    <span id="profileAvatarText">U</span>
                 </div>
                 <div id="profileUserName" style="font-size: 1.2rem; font-weight: 600;"></div>
                 <div id="profileUserEmail" style="color: var(--gray);"></div>
@@ -1124,23 +1131,12 @@
                 <label for="profileStatus">Status</label>
                 <input type="text" id="profileStatus" class="form-control" placeholder="Masukkan status Anda">
             </div>
-            <div class="form-group">
-                <label>Foto Profil</label>
-                <input type="file" id="profilePhotoInput" class="file-input" accept="image/*">
-                <label for="profilePhotoInput" class="file-label">Pilih Foto</label>
-                <div class="selected-file" id="selectedProfilePhoto"></div>
-            </div>
             <button class="btn btn-primary" id="saveProfileBtn">Simpan Perubahan</button>
         </div>
     </div>
     
     <!-- Audio untuk notifikasi -->
     <audio id="notificationSound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/286/286-preview.mp3" type="audio/mpeg">
-    </audio>
-    
-    <!-- Audio untuk panggilan -->
-    <audio id="callSound" preload="auto">
         <source src="https://assets.mixkit.co/active_storage/sfx/286/286-preview.mp3" type="audio/mpeg">
     </audio>
     
@@ -1161,14 +1157,13 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
-        const storage = firebase.storage();
 
         // DOM Elements
         const loginPage = document.getElementById('loginPage');
         const chatPage = document.getElementById('chatPage');
         const loginBtn = document.getElementById('loginBtn');
+        const googleLoginBtn = document.getElementById('googleLoginBtn');
         const registerLink = document.getElementById('registerLink');
-        const logoutBtn = document.getElementById('logoutBtn');
         const messageForm = document.getElementById('messageForm');
         const messageInput = document.getElementById('messageInput');
         const messagesContainer = document.getElementById('messagesContainer');
@@ -1180,7 +1175,7 @@
         const clearNotificationsBtn = document.getElementById('clearNotificationsBtn');
         const onlineCount = document.getElementById('onlineCount');
         const userAvatar = document.getElementById('userAvatar');
-        const userAvatarImg = document.getElementById('userAvatarImg');
+        const userAvatarText = document.getElementById('userAvatarText');
         const userName = document.getElementById('userName');
         const userProfile = document.getElementById('userProfile');
         const userMenu = document.getElementById('userMenu');
@@ -1196,7 +1191,7 @@
         const currentChatName = document.getElementById('currentChatName');
         const currentChatStatus = document.getElementById('currentChatStatus');
         const currentChatAvatar = document.getElementById('currentChatAvatar');
-        const currentChatAvatarImg = document.getElementById('currentChatAvatarImg');
+        const currentChatAvatarText = document.getElementById('currentChatAvatarText');
         const currentChatOnlineDot = document.getElementById('currentChatOnlineDot');
         const voiceCallBtn = document.getElementById('voiceCallBtn');
         const videoCallBtn = document.getElementById('videoCallBtn');
@@ -1209,17 +1204,14 @@
         const closeProfileModal = document.getElementById('closeProfileModal');
         const profileBtn = document.getElementById('profileBtn');
         const settingsBtn = document.getElementById('settingsBtn');
-        const profileAvatarImg = document.getElementById('profileAvatarImg');
+        const profileAvatarText = document.getElementById('profileAvatarText');
         const profileUserName = document.getElementById('profileUserName');
         const profileUserEmail = document.getElementById('profileUserEmail');
         const profileName = document.getElementById('profileName');
         const profileStatus = document.getElementById('profileStatus');
-        const profilePhotoInput = document.getElementById('profilePhotoInput');
-        const selectedProfilePhoto = document.getElementById('selectedProfilePhoto');
         const saveProfileBtn = document.getElementById('saveProfileBtn');
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const notificationSound = document.getElementById('notificationSound');
-        const callSound = document.getElementById('callSound');
 
         // State variables
         let currentUser = null;
@@ -1229,7 +1221,6 @@
         let allUsers = {};
         let selectedUsers = [];
         let isDarkMode = true;
-        let fileToUpload = null;
 
         // Create stars for background
         function createStars() {
@@ -1274,6 +1265,18 @@
                 })
                 .catch((error) => {
                     alert('Login gagal: ' + error.message);
+                });
+        }
+
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    currentUser = result.user;
+                    showChatPage();
+                })
+                .catch((error) => {
+                    alert('Login Google gagal: ' + error.message);
                 });
         }
 
@@ -1322,7 +1325,6 @@
                 .then(() => {
                     currentUser = null;
                     showLoginPage();
-                    showNotification('Anda telah logout', 'info');
                 })
                 .catch((error) => {
                     console.error('Logout error:', error);
@@ -1345,33 +1347,34 @@
             updateUserInfo();
             
             // Set user online status
-            database.ref('users/' + currentUser.uid).set({
+            const userStatusRef = database.ref('users/' + currentUser.uid);
+            userStatusRef.set({
+                uid: currentUser.uid,
                 name: currentUser.displayName || currentUser.email,
                 email: currentUser.email,
                 online: true,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP,
-                status: 'Online',
-                avatar: currentUser.photoURL || ''
+                status: 'Online'
+            });
+            
+            // Handle disconnect
+            userStatusRef.onDisconnect().update({
+                online: false,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
             });
             
             // Load chats and online users
             loadChats();
             loadOnlineUsers();
             loadAllUsers();
+            
+            showNotification(`Selamat datang, ${currentUser.displayName || currentUser.email}!`, 'success');
         }
 
         function updateUserInfo() {
-            userAvatarImg.src = currentUser.photoURL || '';
-            userAvatarImg.alt = currentUser.displayName || currentUser.email;
-            userName.textContent = currentUser.displayName || currentUser.email;
-            
-            // Set fallback avatar if no photo
-            if (!currentUser.photoURL) {
-                const fallbackText = currentUser.displayName ? 
-                    currentUser.displayName.charAt(0).toUpperCase() : 
-                    currentUser.email.charAt(0).toUpperCase();
-                userAvatar.innerHTML = fallbackText;
-            }
+            const displayName = currentUser.displayName || currentUser.email;
+            userAvatarText.textContent = displayName.charAt(0).toUpperCase();
+            userName.textContent = displayName;
         }
 
         function showNotification(message, type = 'info') {
@@ -1387,15 +1390,7 @@
             renderNotifications();
             
             // Play notification sound
-            notificationSound.play();
-            
-            // Show notification panel briefly if it's not already visible
-            if (!notificationPanel.style.display || notificationPanel.style.display === 'none') {
-                notificationPanel.style.display = 'block';
-                setTimeout(() => {
-                    notificationPanel.style.display = 'none';
-                }, 3000);
-            }
+            notificationSound.play().catch(e => console.log('Audio play failed:', e));
         }
 
         function updateNotificationBadge() {
@@ -1450,6 +1445,7 @@
         function createDefaultChat() {
             const chatId = 'general';
             const chatData = {
+                id: chatId,
                 name: 'GRUP ALHACKER Umum',
                 type: 'group',
                 createdBy: 'system',
@@ -1486,7 +1482,7 @@
                 if (messages) {
                     const messageKey = Object.keys(messages)[0];
                     const message = messages[messageKey];
-                    lastMessage = message.text;
+                    lastMessage = message.text || '(Gambar)';
                     lastMessageTime = formatTime(message.timestamp);
                 }
                 
@@ -1495,26 +1491,22 @@
                 chatItem.dataset.chatId = chatId;
                 
                 // Determine avatar and online status
-                let avatarText = '';
-                let avatarImg = '';
+                let avatarText = chat.name.charAt(0);
                 let isOnline = false;
                 
-                if (chat.type === 'group') {
-                    avatarText = chat.name.charAt(0);
-                } else {
+                if (chat.type === 'private') {
                     // For private chat, find the other user
                     const otherUserId = Object.keys(chat.members).find(id => id !== currentUser.uid);
                     if (otherUserId && allUsers[otherUserId]) {
                         const otherUser = allUsers[otherUserId];
                         avatarText = otherUser.name.charAt(0);
-                        avatarImg = otherUser.avatar || '';
                         isOnline = otherUser.online || false;
                     }
                 }
                 
                 chatItem.innerHTML = `
                     <div class="chat-item-avatar">
-                        ${avatarImg ? `<img src="${avatarImg}" alt="${chat.name}">` : avatarText}
+                        ${avatarText}
                         ${isOnline ? '<div class="online-dot"></div>' : ''}
                     </div>
                     <div class="chat-item-info">
@@ -1554,6 +1546,7 @@
 
         function updateChatInfo(chat) {
             currentChatName.textContent = chat.name;
+            currentChatAvatarText.textContent = chat.name.charAt(0);
             
             if (chat.type === 'group') {
                 currentChatStatus.textContent = `${Object.keys(chat.members).length} anggota`;
@@ -1565,14 +1558,6 @@
                     const otherUser = allUsers[otherUserId];
                     currentChatStatus.textContent = otherUser.online ? 'Online' : 'Offline';
                     currentChatOnlineDot.style.display = otherUser.online ? 'block' : 'none';
-                    
-                    // Set avatar
-                    if (otherUser.avatar) {
-                        currentChatAvatarImg.src = otherUser.avatar;
-                        currentChatAvatarImg.alt = otherUser.name;
-                    } else {
-                        currentChatAvatar.innerHTML = otherUser.name.charAt(0);
-                    }
                 }
             }
             
@@ -1587,6 +1572,9 @@
         }
 
         function loadChatMessages(chatId, chat) {
+            // Clear previous listener
+            database.ref('messages/' + chatId).off();
+            
             messagesContainer.innerHTML = '';
             
             // Listen for messages in this chat
@@ -1606,6 +1594,9 @@
                         addMessageToChat(message, chat);
                     });
                 }
+                
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
 
@@ -1622,6 +1613,8 @@
                 senderName = 'System';
             } else if (allUsers[message.sender]) {
                 senderName = allUsers[message.sender].name;
+            } else if (message.sender === currentUser.uid) {
+                senderName = currentUser.displayName || currentUser.email;
             }
             
             messageElement.className = `message ${messageType}`;
@@ -1634,77 +1627,56 @@
             `;
             
             messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         function sendMessage() {
             const messageText = messageInput.value.trim();
             
-            if (!messageText && !fileToUpload) return;
+            if (!messageText) return;
+            
+            if (!currentChat) {
+                showNotification('Pilih percakapan terlebih dahulu', 'error');
+                return;
+            }
             
             const messageData = {
                 sender: currentUser.uid,
+                text: messageText,
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
                 type: 'text'
             };
             
-            if (fileToUpload) {
-                // Upload file first
-                uploadFile(fileToUpload)
-                    .then(downloadURL => {
-                        messageData.image = downloadURL;
-                        if (messageText) {
-                            messageData.text = messageText;
-                        }
-                        saveMessageToDatabase(messageData);
-                    })
-                    .catch(error => {
-                        console.error('Error uploading file:', error);
-                        showNotification('Gagal mengunggah file', 'error');
-                    });
-            } else {
-                messageData.text = messageText;
-                saveMessageToDatabase(messageData);
-            }
-            
-            // Clear input and reset file
-            messageInput.value = '';
-            fileToUpload = null;
-            selectedFile.textContent = '';
-        }
-
-        function saveMessageToDatabase(messageData) {
             // Save message to database
             database.ref('messages/' + currentChat.id).push(messageData)
                 .then(() => {
                     // Update last message in chat
                     database.ref('chats/' + currentChat.id).update({
-                        lastMessage: messageData.text || '(Gambar)',
+                        lastMessage: messageText,
                         lastMessageTime: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    
+                    // Clear input
+                    messageInput.value = '';
+                    
+                    // Notify other users in the chat
+                    Object.keys(currentChat.members).forEach(memberId => {
+                        if (memberId !== currentUser.uid) {
+                            database.ref('notifications/' + memberId).push({
+                                type: 'new_message',
+                                chatId: currentChat.id,
+                                chatName: currentChat.name,
+                                sender: currentUser.uid,
+                                senderName: currentUser.displayName || currentUser.email,
+                                message: messageText,
+                                timestamp: firebase.database.ServerValue.TIMESTAMP
+                            });
+                        }
                     });
                 })
                 .catch(error => {
                     console.error('Error sending message:', error);
                     showNotification('Gagal mengirim pesan', 'error');
                 });
-        }
-
-        function uploadFile(file) {
-            return new Promise((resolve, reject) => {
-                const storageRef = storage.ref();
-                const fileRef = storageRef.child('chat_files/' + Date.now() + '_' + file.name);
-                
-                fileRef.put(file)
-                    .then(snapshot => {
-                        return snapshot.ref.getDownloadURL();
-                    })
-                    .then(downloadURL => {
-                        resolve(downloadURL);
-                    })
-                    .catch(error => {
-                        reject(error);
-                    });
-            });
         }
 
         function formatTime(timestamp) {
@@ -1727,11 +1699,13 @@
             // Listen for changes in online users
             database.ref('users').on('value', (snapshot) => {
                 const users = snapshot.val();
+                onlineUsers = {};
                 let count = 0;
                 
                 if (users) {
                     Object.keys(users).forEach(userId => {
                         if (users[userId].online && userId !== currentUser.uid) {
+                            onlineUsers[userId] = users[userId];
                             count++;
                         }
                     });
@@ -1754,11 +1728,6 @@
                 return;
             }
             
-            if (selectedUsers.length === 0) {
-                alert('Harap pilih setidaknya satu anggota grup');
-                return;
-            }
-            
             // Add current user to selected users
             const allMembers = [...selectedUsers, currentUser.uid];
             
@@ -1778,6 +1747,8 @@
             
             // Create group in database
             const newGroupRef = database.ref('chats').push();
+            groupData.id = newGroupRef.key;
+            
             newGroupRef.set(groupData)
                 .then(() => {
                     // Add group to each member's chat list
@@ -1788,7 +1759,7 @@
                     // Add welcome message
                     const welcomeMessage = {
                         sender: 'system',
-                        text: `Grup "${groupName.value.trim()}" telah dibuat`,
+                        text: `Grup "${groupName.value.trim()}" telah dibuat oleh ${currentUser.displayName || currentUser.email}`,
                         timestamp: firebase.database.ServerValue.TIMESTAMP,
                         type: 'system'
                     };
@@ -1811,18 +1782,16 @@
 
         function searchUsers(query) {
             // In a real app, you would search users in the database
-            // For this demo, we'll just filter from allUsers
+            // For this demo, we'll just filter from onlineUsers
             
             const results = [];
             const lowerQuery = query.toLowerCase();
             
-            Object.keys(allUsers).forEach(userId => {
-                if (userId !== currentUser.uid) {
-                    const user = allUsers[userId];
-                    if (user.name.toLowerCase().includes(lowerQuery) || 
-                        user.email.toLowerCase().includes(lowerQuery)) {
-                        results.push({ id: userId, ...user });
-                    }
+            Object.keys(onlineUsers).forEach(userId => {
+                const user = onlineUsers[userId];
+                if (user.name.toLowerCase().includes(lowerQuery) || 
+                    user.email.toLowerCase().includes(lowerQuery)) {
+                    results.push({ id: userId, ...user });
                 }
             });
             
@@ -1879,18 +1848,8 @@
             profileUserName.textContent = currentUser.displayName || currentUser.email;
             profileUserEmail.textContent = currentUser.email;
             profileName.value = currentUser.displayName || '';
-            profileStatus.value = 'Online'; // This would come from user data in a real app
-            
-            if (currentUser.photoURL) {
-                profileAvatarImg.src = currentUser.photoURL;
-            } else {
-                profileAvatarImg.style.display = 'none';
-                // Show fallback avatar
-                const fallbackText = currentUser.displayName ? 
-                    currentUser.displayName.charAt(0).toUpperCase() : 
-                    currentUser.email.charAt(0).toUpperCase();
-                document.querySelector('#profileModal .avatar').innerHTML = fallbackText;
-            }
+            profileStatus.value = 'Online';
+            profileAvatarText.textContent = (currentUser.displayName || currentUser.email).charAt(0).toUpperCase();
             
             profileModal.style.display = 'flex';
         }
@@ -1923,25 +1882,25 @@
             }
         }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                fileToUpload = file;
-                selectedFile.textContent = `File: ${file.name}`;
-            }
-        }
-
         // Event Listeners
         loginBtn.addEventListener('click', loginWithEmail);
+        googleLoginBtn.addEventListener('click', loginWithGoogle);
         registerLink.addEventListener('click', (e) => {
             e.preventDefault();
             registerWithEmail();
         });
-        logoutBtn.addEventListener('click', logout);
 
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             sendMessage();
+        });
+
+        // Handle Enter key for sending message
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
         });
 
         notificationBell.addEventListener('click', () => {
@@ -1987,6 +1946,8 @@
             showNotification('Fitur pengaturan akan segera hadir!', 'info');
         });
 
+        logoutBtn.addEventListener('click', logout);
+
         closeProfileModal.addEventListener('click', () => {
             profileModal.style.display = 'none';
         });
@@ -1998,36 +1959,11 @@
         voiceCallBtn.addEventListener('click', initVoiceCall);
         videoCallBtn.addEventListener('click', initVideoCall);
 
-        attachFileBtn.addEventListener('click', () => {
-            document.getElementById('fileInput').click();
-        });
-
-        attachImageBtn.addEventListener('click', () => {
-            document.getElementById('imageInput').click();
-        });
-
-        // Create hidden file inputs
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.id = 'fileInput';
-        fileInput.className = 'file-input';
-        fileInput.addEventListener('change', handleFileSelect);
-        document.body.appendChild(fileInput);
-
-        const imageInput = document.createElement('input');
-        imageInput.type = 'file';
-        imageInput.id = 'imageInput';
-        imageInput.className = 'file-input';
-        imageInput.accept = 'image/*';
-        imageInput.addEventListener('change', handleFileSelect);
-        document.body.appendChild(imageInput);
-
         // Auth state observer
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
                 showChatPage();
-                showNotification(`Selamat datang, ${user.displayName || user.email}!`, 'success');
             } else {
                 showLoginPage();
             }
@@ -2036,7 +1972,6 @@
         // Initialize
         createStars();
         getUserIP();
-        showLoginPage();
         
         // Handle page visibility changes for notifications
         document.addEventListener('visibilitychange', function() {
